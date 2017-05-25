@@ -1,0 +1,31 @@
+var InsertParser = require('sql-insert-to-json'), 
+    schema = ['reviewer_id', 'manuscript_id', 'result', 'clarity', 'method', 'contribution', 'appropriate'],
+        statements = [
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('3','1','-','NULL','NULL','NULL','NULL')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('3','2','y','8','7','9','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('7','3','n','5','5','5','6')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('7','4','y','10','10','10','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('8','5','y','8','8','8','8')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('8','6','y','9','9','9','9')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('9','7','y','10','10','10','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('9','8','-','NULL','NULL','NULL','NULL')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('13','1','-','NULL','NULL','NULL','NULL')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('13','2','y','10','10','9','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('14','3','n','2','4','6','8')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('14','4','y','9','9','10','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('15','5','y','9','9','9','9')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('15','6','y','7','8','10','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('19','7','y','10','10','10','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('19','8','-','NULL','NULL','NULL','NULL')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('20','1','-','NULL','NULL','NULL','NULL')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('20','2','y','9','9','9','9')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('20','3','n','1','1','2','3')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('21','4','y','8','10','8','9')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('21','5','y','8','10','9','7')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('30','6','y','10','7','7','10')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('30','7','y','9','9','9','9')",
+            "INSERT INTO 'Manuscript_Reviewer' VALUES ('30','8','-','NULL','NULL','NULL','NULL')"
+        ],
+        parser = new InsertParser(schema);
+
+console.log(parser.parse(statements))
