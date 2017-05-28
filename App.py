@@ -10,7 +10,7 @@ import random
 import pprint
 
 # Person Type
-EDITOR, AUTHOR, REVIEWER, RETIRED_REVIEWER = "1", "2", "3", "4"
+EDITOR, AUTHOR, REVIEWER, RETIRED_REVIEWER = 1, 2, 3, 4
 
 # Configure SQL Driver
 #PASS = "" if len(sys.argv) < 1 else sys.argv[1]    # user's password
@@ -163,17 +163,18 @@ class CmdInterface(cmd.Cmd):
             return
 
         # parse arguments
+        #import pdb; pdb.set_trace()
         user_id = shlex.split(line)[0]
-        user = self.db.person.find_one({"id": user_id})
+        user = self.db.person.find_one({"_id": int(user_id)})
 
         if user is None:
             print("Invalid Input: User ID Not Found")
             return
 
-        self.curr_id = user["id"]
+        self.curr_id = user["_id"]
         if user["type"] == EDITOR:
             print("\n---------EDITOR PANEL---------\n")
-            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["id"]))
+            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["_id"]))
             self.mode = "editor"
 
             self.do_display(list(self.db.manuscript.aggregate(
@@ -187,15 +188,15 @@ class CmdInterface(cmd.Cmd):
 
         elif user["type"] == AUTHOR:
             print("\n---------AUTHOR PANEL---------\n")
-            print("Hello {} {}!\nYour ID is: {}\nYour Address on file is:\n{} \n".format(user["first_name"], user["last_name"], user["id"], user["mailing_address"]))
+            print("Hello {} {}!\nYour ID is: {}\nYour Address on file is:\n{} \n".format(user["first_name"], user["last_name"], user["_id"], user["mailing_address"]))
             self.mode = "author"
         elif user["type"] == REVIEWER:
             print("\n---------REVIEWER PANEL---------\n")
-            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["id"]))
+            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["_id"]))
             self.mode = "reviewer"
         elif user["type"] == RETIRED_REVIEWER:
             print("\n---------RETIRED REVIEWER PANEL---------\n")
-            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["id"]))
+            print("Hello {} {}!\nYour ID is: {} \n".format(user["first_name"], user["last_name"], user["_id"]))
             self.mode = "retired_reviewer"
 
             self.do_help("")            
@@ -312,8 +313,8 @@ class CmdInterface(cmd.Cmd):
         if self.mode == "author":
             result = list(self.db.manuscript_author.aggregate(
                 [
-                    { "$match": {"rank": "1", "author_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "id", "as": "paperInfo" } }, 
-                    { "$project": {"paperInfo.title": 1, "paperInfo.id": 1, "paperInfo.status": 1, "_id": 0} } 
+                    { "$match": {"rank": 1, "author_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo" } }, 
+                    { "$project": {"paperInfo.title": 1, "paperInfo._id": 1, "paperInfo.status": 1, "_id": 0} } 
                 ]
             ));
 
@@ -321,7 +322,7 @@ class CmdInterface(cmd.Cmd):
                 print ("Nothing to show at this moment.")
                 return
 
-            to_print = ['id', 'title', 'status']
+            to_print = ['_id', 'title', 'status']
 
             print("\nStatus of Submitted Manuscripts:")
             print("".join(["{:<12} ".format(col) for col in to_print]))
@@ -339,9 +340,9 @@ class CmdInterface(cmd.Cmd):
                 self.do_display(list(self.db.manuscript.aggregate(
                     [
                         { "$match": {"assigned_editor": self.curr_id}},    
-                        { "$project": {"title": 1, "id": 1, "status": 1, "_id": 0} } 
+                        { "$project": {"title": 1, "status": 1, "_id": 1} } 
                     ]
-                )), ['id', 'title', 'status']);
+                )), ['_id', 'title', 'status']);
             else:
                 if shlex.split(line)[0] == 'issue':
                     self.do_display(list(self.db.issue.find()), ['year', 'period', 'title', 'status'])
@@ -357,10 +358,10 @@ class CmdInterface(cmd.Cmd):
         elif self.mode == "reviewer":
             result = list(self.db.manuscript_reviewer.aggregate(
                 [
-                    { "$match": {"result": "-", "reviewer_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "id", "as": "paperInfo" } }, 
+                    { "$match": {"result": "-", "reviewer_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo" } }, 
                     { "$project": {
                         "paperInfo.title": 1, 
-                        "paperInfo.id": 1, 
+                        "paperInfo._id": 1, 
                         "paperInfo.status": {"$filter": {
                             "input": "$paperInfo.status", 
                             "as": "status",
@@ -372,7 +373,7 @@ class CmdInterface(cmd.Cmd):
 
             #print(result)
 
-            cols_to_print = ['id', 'title', 'status']
+            cols_to_print = ['_id', 'title', 'status']
 
             print("\nStatus of Assigned Manuscripts:")
             print("".join(["{:<12} ".format(col) for col in cols_to_print]))
@@ -413,7 +414,7 @@ class CmdInterface(cmd.Cmd):
                 return
 
             result = self.db.manuscript_reviewer.update_one(
-                {"reviewer_id": str(self.curr_id), "manuscript_id": str(manuscript_id), "result": "-"}, 
+                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"}, 
                 {"$set": {"result": "y", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
             )
 
@@ -423,14 +424,14 @@ class CmdInterface(cmd.Cmd):
         elif self.mode == "editor":
             manuscript_id = line
             # verify manuscript belongs to logged in editor
-            result = list(self.db.manuscript.find({"id": str(manuscript_id), "assigned_editor": str(self.curr_id)}))
+            result = list(self.db.manuscript.find({"_id": manuscript_id, "assigned_editor": self.curr_id}))
 
             if len(result) == 0:
                 print("Invalid Input: Only manuscripts belonging to current editor can be accepted")
                 return
 
             # verify if all reviewers submitted their results
-            result = list(self.db.manuscript_reviewer.find({"manuscript_id": str(manuscript_id), "result": "-"}))
+            result = list(self.db.manuscript_reviewer.find({"manuscript_id": manuscript_id, "result": "-"}))
 
             if len(result) > 0:
                 print("Can't accept manuscript until all manuscript reviewers submit their results")
@@ -439,7 +440,7 @@ class CmdInterface(cmd.Cmd):
             # update manuscript status
 
             result = self.db.manuscript.update_one(
-                    {"id": manuscript_id}, 
+                    {"_id": manuscript_id}, 
                     {"$set": {"status": "Accepted"}}
                 )
 
@@ -462,7 +463,7 @@ class CmdInterface(cmd.Cmd):
                 return
 
             result = self.db.manuscript_reviewer.update_one(
-                {"reviewer_id": str(self.curr_id), "manuscript_id": str(manuscript_id), "result": "-"}, 
+                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"}, 
                 {"$set": {"result": "n", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
             )
 
@@ -472,7 +473,7 @@ class CmdInterface(cmd.Cmd):
         elif self.mode == "editor":
             manuscript_id = line
             # verify manuscript belongs to logged in editor
-            result = list(self.db.manuscript.find({"id": str(manuscript_id), "assigned_editor": str(self.curr_id)}))
+            result = list(self.db.manuscript.find({"_id": manuscript_id, "assigned_editor": self.curr_id}))
 
             if len(result) == 0:
                 print("Invalid Input: Only manuscripts belonging to current editor can be rejected")
@@ -488,7 +489,7 @@ class CmdInterface(cmd.Cmd):
             # update manuscript status
 
             result = self.db.manuscript.update_one(
-                    {"id": manuscript_id}, 
+                    {"_id": manuscript_id}, 
                     {"$set": {"status": "Rejected"}}
                 )
 
@@ -575,7 +576,7 @@ class CmdInterface(cmd.Cmd):
         if self.mode != "editor":
             print ("Command not usable in this mode")
 
-        issue_vol, issue_year = shlex.split(line)
+        issue_vol, issue_year = map(int, shlex.split(line))
 
         result = db.issue.update_one({"year": issue_year, "volume": issue_vol, "status": "Scheduled"}, {"$set": {"status": "Published"}})
 
@@ -638,7 +639,7 @@ class CmdInterface(cmd.Cmd):
 
         answer = raw_input("Do you really want to resign? (y or n): ")
         if answer == "y":
-            result = self.db.person.update_one({"id": str(self.curr_id)}, {"$set": {"type": "4"}});
+            result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"type": "4"}});
 
             if result.modified_count == 0:
                 print ("DB Error: Update Failed!")
