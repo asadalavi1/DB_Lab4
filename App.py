@@ -422,7 +422,7 @@ class CmdInterface(cmd.Cmd):
                 print ("Update Failed!")
 
         elif self.mode == "editor":
-            manuscript_id = line
+            manuscript_id = int(line)
             # verify manuscript belongs to logged in editor
             result = list(self.db.manuscript.find({"_id": manuscript_id, "assigned_editor": self.curr_id}))
 
@@ -471,7 +471,7 @@ class CmdInterface(cmd.Cmd):
                 print ("Update Failed!")
 
         elif self.mode == "editor":
-            manuscript_id = line
+            manuscript_id = int(line)
             # verify manuscript belongs to logged in editor
             result = list(self.db.manuscript.find({"_id": manuscript_id, "assigned_editor": self.curr_id}))
 
@@ -639,7 +639,7 @@ class CmdInterface(cmd.Cmd):
 
         answer = raw_input("Do you really want to resign? (y or n): ")
         if answer == "y":
-            result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"type": "4"}});
+            result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"type": 4}});
 
             if result.modified_count == 0:
                 print ("DB Error: Update Failed!")
