@@ -310,20 +310,29 @@ class CmdInterface(cmd.Cmd):
 
     def do_status(self, line):
         if self.mode == "author":
-            self.do_display(list(self.db.manuscript_author.aggregate(
+            result = list(self.db.manuscript_author.aggregate(
                 [
                     { "$match": {"rank": "1", "author_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "id", "as": "paperInfo" } }, 
                     { "$project": {"paperInfo.title": 1, "paperInfo.id": 1, "paperInfo.status": 1, "_id": 0} } 
                 ]
-            )), ['paperInfo.id', 'paperInfo.title', 'paperInfo.status']);
+            ));
 
-            # print("\nStatus of Submitted Manuscripts:")
-            # print("".join(["{:<12}".format(col) for col in self.cursor.column_names]))
-            # print("--------------------------------------------")
+            if (len(result) == 0):
+                print ("Nothing to show at this moment.")
+                return
 
-            # # iterate through results
-            # for row in self.cursor:
-            #     print("{}\t{}\t{}".format(row["id"], ("{}...").format(row["title"][:20]), row["status"]))
+            to_print = ['id', 'title', 'status']
+
+            print("\nStatus of Submitted Manuscripts:")
+            print("".join(["{:<12} ".format(col) for col in to_print]))
+            print("--------------------------------------------")
+
+
+            for res in result:
+                for paperInfo in res['paperInfo']:
+                    print("".join(["{:<12} ".format(paperInfo[col]) for col in to_print]))
+
+            # iterate through results
 
         elif self.mode == "editor":
             if len(shlex.split(line)) == 0:
@@ -335,9 +344,7 @@ class CmdInterface(cmd.Cmd):
                 )), ['id', 'title', 'status']);
             else:
                 if shlex.split(line)[0] == 'issue':
-                    STATUS_QUERY = ("SELECT * FROM Issue;")
-
-                    self.do_display(STATUS_QUERY)
+                    self.do_display(list(self.db.issue.find()), ['year', 'period', 'title', 'status'])
 
             # print("\nStatus of Manuscripts in System:")
             # print("".join(["{:<12}".format(col) for col in self.cursor.column_names]))
@@ -348,7 +355,7 @@ class CmdInterface(cmd.Cmd):
             #     print("{}\t{}".format((row["status"].replace("_", " ")).title(), row["num"]))
 
         elif self.mode == "reviewer":
-            pprint.pprint(list(self.db.manuscript_reviewer.aggregate(
+            result = list(self.db.manuscript_reviewer.aggregate(
                 [
                     { "$match": {"result": "-", "reviewer_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "id", "as": "paperInfo" } }, 
                     { "$project": {
@@ -361,7 +368,27 @@ class CmdInterface(cmd.Cmd):
                         }}, 
                         "_id": 0} } 
                 ]
-            )));
+            ));
+
+            #print(result)
+
+            cols_to_print = ['id', 'title', 'status']
+
+            print("\nStatus of Assigned Manuscripts:")
+            print("".join(["{:<12} ".format(col) for col in cols_to_print]))
+            print("--------------------------------------------")
+
+            str_to_print = list()
+
+            for res in result:
+                for paperInfo in res['paperInfo']:
+                    for col in cols_to_print:
+                        if col == "status":
+                            str_to_print.append("{:<12} ".format(str(paperInfo[col][0])))
+                        else:
+                            str_to_print.append("{:<12} ".format(str(paperInfo[col])))
+
+            print ("".join(str_to_print))
 
             # print("\nStatus of Assigned Manuscripts:")
             # print("".join(["{:<12}".format(col) for col in self.cursor.column_names]))
@@ -385,39 +412,40 @@ class CmdInterface(cmd.Cmd):
                 print("Invalid Input: Please assign valid scores")
                 return
 
-            UPDATE_QUERY = ("UPDATE `aalavi_db`.`Manuscript_Reviewer` "
-                            "SET `result`='{}', `clarity`='{}', `method`='{}', `contribution`='{}', `appropriate`='{}' "
-                            "WHERE `reviewer_id`='{}' AND `manuscript_id`='{}' AND `result` = '-';").format('y', clarity, method, appropriate, contribution, self.curr_id, manuscript_id)
+            result = self.db.manuscript_reviewer.update_one(
+                {"reviewer_id": str(self.curr_id), "manuscript_id": str(manuscript_id), "result": "-"}, 
+                {"$set": {"result": "y", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
+            )
 
-            if self.do_execute(UPDATE_QUERY):
-                self.con.commit()
+            if result.modified_count < 1:
+                print ("Update Failed!")
 
         elif self.mode == "editor":
             manuscript_id = line
             # verify manuscript belongs to logged in editor
-            permissions_check = ("SELECT * FROM Manuscript "
-                                 "WHERE id = {} AND assigned_editor = {};").format(manuscript_id, self.curr_id)
+            result = list(self.db.manuscript.find({"id": str(manuscript_id), "assigned_editor": str(self.curr_id)}))
 
-            if not self.do_execute(permissions_check):
+            if len(result) == 0:
                 print("Invalid Input: Only manuscripts belonging to current editor can be accepted")
                 return
 
             # verify if all reviewers submitted their results
-            not_reviewed_by_all = ("SELECT * FROM Manuscript_Reviewer "
-                                   "WHERE `manuscript_id`='{}' AND result = '-';").format(manuscript_id)
-            if self.do_execute(not_reviewed_by_all):
+            result = list(self.db.manuscript_reviewer.find({"manuscript_id": str(manuscript_id), "result": "-"}))
+
+            if len(result) > 0:
                 print("Can't accept manuscript until all manuscript reviewers submit their results")
                 return
 
             # update manuscript status
-            query = ("UPDATE Manuscript SET status = \'{}\' "
-                     "WHERE id = {};").format("Accepted", manuscript_id)
 
-            # execute queries
-            if self.do_execute(query):
-                self.con.commit()
-            else:
-                self.con.rollback()
+            result = self.db.manuscript.update_one(
+                    {"id": manuscript_id}, 
+                    {"$set": {"status": "Accepted"}}
+                )
+
+            if (result.modified_count < 1):
+                print("Unable to Update, DB Error!")
+
         else:
             print("Command not usable in this mode")
 
@@ -433,37 +461,39 @@ class CmdInterface(cmd.Cmd):
                 print("Invalid Input, please retry")
                 return
 
-            UPDATE_QUERY = ("UPDATE `aalavi_db`.`Manuscript_Reviewer` "
-                            "SET `result`='{}', `clarity`='{}', `method`='{}', `contribution`='{}', `appropriate`='{}' "
-                            "WHERE `reviewer_id`='{}' AND `manuscript_id`='{}' AND `result` = '-';").format('n', clarity, method, appropriate, contribution, self.curr_id, manuscript_id)
+            result = self.db.manuscript_reviewer.update_one(
+                {"reviewer_id": str(self.curr_id), "manuscript_id": str(manuscript_id), "result": "-"}, 
+                {"$set": {"result": "n", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
+            )
 
-            if self.do_execute(UPDATE_QUERY):
-                self.con.commit()
+            if result.modified_count < 1:
+                print ("Update Failed!")
 
         elif self.mode == "editor":
             manuscript_id = line
             # verify manuscript belongs to logged in editor
-            permissions_check = ("SELECT * FROM Manuscript "
-                                 "WHERE id = {} AND assigned_editor = {};").format(manuscript_id, self.curr_id)
+            result = list(self.db.manuscript.find({"id": str(manuscript_id), "assigned_editor": str(self.curr_id)}))
 
-            if not self.do_execute(permissions_check):
+            if len(result) == 0:
                 print("Invalid Input: Only manuscripts belonging to current editor can be rejected")
                 return
 
             # verify if all reviewers submitted their results
-            not_reviewed_by_all = ("SELECT * FROM Manuscript_Reviewer "
-                                   "WHERE `manuscript_id`='{}' AND result = '-';").format(manuscript_id)
-            if self.do_execute(not_reviewed_by_all):
-                print("Can't accept manuscript until all manuscript reviewers submit their results")
+            result = list(self.db.manuscript_reviewer.find({"manuscript_id": str(manuscript_id), "result": "-"}))
+
+            if len(result) > 0:
+                print("Can't reject manuscript until all manuscript reviewers submit their results")
                 return
 
             # update manuscript status
-            query = ("UPDATE Manuscript SET status = \'{}\' "
-                     "WHERE id = {};").format("Rejected", manuscript_id)
 
-            # execute queries
-            if self.do_execute(query):
-                self.con.commit()
+            result = self.db.manuscript.update_one(
+                    {"id": manuscript_id}, 
+                    {"$set": {"status": "Rejected"}}
+                )
+
+            if (result.modified_count < 1):
+                print("Unable to Update, DB Error!")
         else:
             print("Command not usable in this mode")
 
@@ -547,15 +577,10 @@ class CmdInterface(cmd.Cmd):
 
         issue_vol, issue_year = shlex.split(line)
 
-        UPDATE_ISSUE = ("UPDATE Issue SET status = \'Published\' "
-                        "WHERE year = {} and volume = {} AND status = \'Scheduled\';").format(issue_year, issue_vol)
+        result = db.issue.update_one({"year": issue_year, "volume": issue_vol, "status": "Scheduled"}, {"$set": {"status": "Published"}})
 
-        if self.do_execute(UPDATE_ISSUE):
-            UPDATE_MANUSCRIPTS = ("UPDATE Manuscript SET status = \'Published\' "
-                                  "WHERE issue_year = {} and issue_vol = {} AND status = \'Scheduled\';").format(issue_year, issue_vol)
-
-            if self.do_execute(UPDATE_MANUSCRIPTS):
-                self.con.commit()
+        if result.modified_count == 1:
+            db.manuscript.update_many({"issue_year": issue_year, "issue_vol": issue_vol, "status": "Scheduled"}, {"$set": {"status": "Published"}})
 
     def do_createissue(self, line):
         if self.mode != "editor":
