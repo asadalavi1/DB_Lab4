@@ -638,10 +638,11 @@ class CmdInterface(cmd.Cmd):
 
         answer = raw_input("Do you really want to resign? (y or n): ")
         if answer == "y":
-            UPDATE_QUERY = "UPDATE Person SET type = 4 WHERE id = {};".format(self.curr_id)
+            result = self.db.person.update_one({"id": str(self.curr_id)}, {"$set": {"type": "4"}});
 
-            if self.do_execute(UPDATE_QUERY):
-                self.con.commit()
+            if result.modified_count == 0:
+                print ("DB Error: Update Failed!")
+                return
 
     def do_EOF(self, line):
         return True
