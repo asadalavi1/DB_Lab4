@@ -608,11 +608,8 @@ class CmdInterface(cmd.Cmd):
             print("Invalid Input: Issue period must be between 0 and 4")
             return
 
-        CREATE_QUERY = ("INSERT INTO `aalavi_db`.`Issue` (`year`, `period`, `volume`, `title`) "
-                        "VALUES ('{}', '{}', '{}', '{}');").format(issue_year, issue_period, issue_vol, issue_title)
-
-        if self.do_execute(CREATE_QUERY):
-            self.con.commit()
+        self.db.issue.insert_one({"year": issue_year, "period": issue_period,
+                                  "volume": issue_vol, "title": issue_title})
 
     def do_retract(self, line):
         if self.mode != "author":
@@ -629,21 +626,15 @@ class CmdInterface(cmd.Cmd):
             return
 
         # only the primary author of the manuscript can retract it
-        CHECK_QUERY = ("SELECT * FROM Manuscript_Author WHERE "
-                       "author_id = {} AND manuscript_id = {} AND rank = 1;").format(self.curr_id, manuscript_id)
-
-        if not self.do_execute(CHECK_QUERY):
+        primary_author = self.db.manuscript_author.find({"author_id": self.curr_id,
+                                                         "manuscript_id": manuscript_id, "rank": 1})
+        if not primary_author:
+            print("Invalid Input: Only primary author can retract manuscript")
             return
 
-        query_list = list()
-        query_list.append("DELETE FROM Manuscript_Author WHERE manuscript_id = {};".format(manuscript_id))
-        query_list.append("DELETE FROM Manuscript_Reviewer WHERE manuscript_id = {};".format(manuscript_id))
-        query_list.append("DELETE FROM Manuscript WHERE id = {};".format(manuscript_id))
-
-        for query in query_list:
-            self.do_execute(query)
-        self.con.commit()
-
+        self.db.manuscript_author.delete_one({"manuscript_id": manuscript_id})
+        self.db.manuscript_reviewer.delete_one({"manuscript_id": manuscript_id})
+        self.db.manuscript.delete_one({"_id": manuscript_id})
         print("Manuscript successfully retracted!")
 
     def do_resign(self, line):
