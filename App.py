@@ -556,49 +556,34 @@ class CmdInterface(cmd.Cmd):
 
         manuscript_id, issue_vol, issue_year = shlex.split(line)
 
-        # verify manuscript belongs to logged in editor
-        permissions_check = ("SELECT * FROM Manuscript "
-                             "WHERE id = {} AND assigned_editor = {};").format(manuscript_id, self.curr_id)
+        # verify manuscript belongs to logged in editor and has correct status
+        permissions_check = self.db.manuscript.find({"_id": manuscript_id,
+                                                     "assigned_editor": self.curr_id,
+                                                     "status": "Typesetting"})
+        if not permissions_check:
+            print("Invalid Input: Only manuscripts with Typesetting status belonging to current editor can be scheduled")
 
-        if not self.do_execute(permissions_check):
-            print("Invalid Input: Only manuscripts belonging to current editor can be scheduled")
-            return
-
-        # find number of pages in manuscript
-        NUM_PAGES_QUERY = ("SELECT num_pages FROM Manuscript "
-                           "WHERE id = {} AND assigned_editor = {} AND status = \'Typesetting\';").format(manuscript_id, self.curr_id)
-
-        if not self.do_execute(NUM_PAGES_QUERY):
-            return
-
-        num_pages = -1
-        for row in self.cursor:
-            num_pages = row['num_pages']
-
+        num_pages = permissions_check['num_pages']
         assert num_pages > 0
 
         # find current total page count of issue (without manuscript being scheduled)
-        SUM_PAGES_QUERY = ("SELECT SUM(num_pages) as sum_pages "
-                           "FROM Manuscript "
-                           "WHERE status = 'Scheduled' AND issue_vol = {} AND issue_year = {};").format(issue_vol, issue_year)
-
-        sum_pages = 0
-        if self.do_execute(SUM_PAGES_QUERY):
-            for row in self.cursor:
-                if row['sum_pages'] is not None:
-                    sum_pages = row['sum_pages']
+        all_issue_manuscripts = self.db.manuscript.find({"status": "Scheduled", "issue_vol": issue_vol,
+                                                         "issue_year": issue_year})
+        sum_pages = sum([manuscript['num_pages'] for manuscript in all_issue_manuscripts
+                         if 'num_pages' in manuscript])
 
         # ensure issue page count within bounds accounting for page count of manuscript being scheduled
         if sum_pages + num_pages > 100:
             print("Cannot Schedule: Issue has exceeded a 100 pages")
             return
 
-        UPDATE_QUERY = ("UPDATE Manuscript "
-                        "SET issue_vol = {}, issue_year = {}, start_page = {}, status = \'Scheduled\' "
-                        "WHERE id = {};").format(issue_vol, issue_year, sum_pages + 1, manuscript_id)
-
-        if self.do_execute(UPDATE_QUERY):
-            self.con.commit()
+        # update manuscript with its associated issue information
+        result = self.db.manuscript.update_one({"_id": manuscript_id},
+                                               {"issue_vol": issue_vol, "issue_year": issue_year,
+                                                "start_page": sum_pages + 1})
+        if result.modified_count == 0:
+            print ("DB Error: Update Failed!")
+            return
 
     def do_publish(self, line):
         # verify mode
