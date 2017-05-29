@@ -628,9 +628,10 @@ class CmdInterface(cmd.Cmd):
             print("Invalid Input: Only primary author can retract manuscript")
             return
 
-        self.db.manuscript_author.delete_one({"manuscript_id": manuscript_id})
-        self.db.manuscript_reviewer.delete_one({"manuscript_id": manuscript_id})
+        self.db.manuscript_author.delete_many({"manuscript_id": manuscript_id})
+        self.db.manuscript_reviewer.delete_many({"manuscript_id": manuscript_id})
         self.db.manuscript.delete_one({"_id": manuscript_id})
+
         print("Manuscript successfully retracted!")
 
     def do_resign(self, line):
