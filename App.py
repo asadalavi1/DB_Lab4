@@ -592,10 +592,12 @@ class CmdInterface(cmd.Cmd):
 
         issue_vol, issue_year = map(int, shlex.split(line))
 
-        result = db.issue.update_one({"year": issue_year, "volume": issue_vol, "status": "Scheduled"}, {"$set": {"status": "Published"}})
+        result = self.db.issue.update_one({"year": issue_year, "volume": issue_vol, "status": "Scheduled"},
+                                          {"$set": {"status": "Published"}})
 
         if result.modified_count == 1:
-            db.manuscript.update_many({"issue_year": issue_year, "issue_vol": issue_vol, "status": "Scheduled"}, {"$set": {"status": "Published"}})
+            self.db.manuscript.update_many({"issue_year": issue_year, "issue_vol": issue_vol, "status": "Scheduled"},
+                                           {"$set": {"status": "Published"}})
 
     def do_createissue(self, line):
         if self.mode != "editor":
@@ -644,11 +646,29 @@ class CmdInterface(cmd.Cmd):
 
         answer = raw_input("Do you really want to resign? (y or n): ")
         if answer == "y":
-            result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"type": 4}});
+            result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"type": RETIRED_REVIEWER}})
 
             if result.modified_count == 0:
                 print ("DB Error: Update Failed!")
                 return
+
+        # find all manuscript-reviewer entries associated with current resigning reviewer
+        manuscript_reviewer_entries = self.db.manuscript_reviewer.find({"reviewer_id": self.curr_id})
+        for manuscript_reviewer_entry in manuscript_reviewer_entries:
+            # find all manuscripts associated with current resigning reviewer that are under review
+            manuscripts_of_reviewer = self.db.manuscript.find({"_id": manuscript_reviewer_entry['manuscript_id'],
+                                                               "type": "Under_Review"})
+            # find all reviewers associated with these manuscripts
+            for manuscript in manuscripts_of_reviewer:
+                reviewers_of_manuscript = self.db.manuscript_reviewer.find({"manuscript_id": manuscript})
+                # if no reviewers of these manuscripts are left active
+                if not any([self.db.person.find({"_id": reviewer['reviewer_id'], "type": REVIEWER})
+                            for reviewer in reviewers_of_manuscript]):
+                    # revert there status to submitted
+                    self.db.manuscript.update_one({"_id": manuscript['_id']},
+                                                  {"$set": {"type": "Submitted"}})
+                    print("No active reviewers of manuscript {} left. \
+                    Manuscript status reverted to Submitted".format(manuscript['id']))
 
     def do_EOF(self, line):
         return True
