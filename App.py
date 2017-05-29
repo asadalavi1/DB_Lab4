@@ -237,7 +237,7 @@ class CmdInterface(cmd.Cmd):
                     return
 
             person_obj = {
-                "_id": get_next_sequence('person'),
+                "_id": self.get_next_sequence('person'),
                 "first_name": fname,
                 "last_name": lname,
                 "type": pno,
@@ -254,7 +254,7 @@ class CmdInterface(cmd.Cmd):
             for ri_code in ri_codes:
                 self.db.reviewer_interest.insert_one({"reviewer_id": new_id, "ri_code": ri_code})
 
-            return queries
+            return new_id
 
         # parse arguments if author
         ri_codes = []
@@ -276,16 +276,12 @@ class CmdInterface(cmd.Cmd):
             email, address = "", ""
 
         ri_codes = map(int, ri_codes)
+        ri_codes = list(set(ri_codes))
 
-        queries = insert_person(fname, lname, pno, email, address, ri_codes)
+        new_id = insert_person(fname, lname, pno, email, address, ri_codes)
 
-        # execute queries
-        for query in queries:
-            if not self.do_execute(query):
-                self.con.rollback()
-                return
-
-        self.con.commit()
+        if new_id != None:
+            print ("New User Registered with ID: {}".format(new_id))
 
     def do_execute(self, query, multi=False):
         """helper function to execute SQL statement"""
