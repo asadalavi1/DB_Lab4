@@ -529,20 +529,26 @@ class CmdInterface(cmd.Cmd):
         # parse arguments
         manuscript_id, pp = map(int, shlex.split(line))
 
-        # verify manuscript belongs to logged in editor
-        permissions_check = ("SELECT * FROM Manuscript "
-                             "WHERE id = {} AND assigned_editor = {};").format(manuscript_id, self.curr_id)
+        # verify manuscript pages within limit
+        pp_limit = 100
+        if pp > pp_limit:
+            print("Invalid Input: Manuscript pages have to be less than {} pages".format(pp_limit))
 
-        if not self.do_execute(permissions_check):
+        # verify manuscript belongs to logged in editor
+        permissions_check = self.db.manuscript.find({"_id": manuscript_id,
+                                                     "assigned_editor": self.curr_id})
+        if not permissions_check:
             print("Invalid Input: Only manuscripts belonging to current editor can be typeset")
             return
 
+        # verify all reviewers have reviewed the paper before allowing typeset
         # execute query
-        query = ("UPDATE Manuscript SET status = \'{}\', num_pages = {} "
-                 "WHERE id = {} and status = \'Accepted\' AND assigned_editor = {};").format("Typesetting", pp, manuscript_id, self.curr_id)
-
-        if self.do_execute(query):
-            self.con.commit()
+        result = self.db.manuscript.update_one({"_id": manuscript_id, "status": "Accepted",
+                                                "assigned_editor": self.curr_id},
+                                               {"$set": {"status": "Typesetting", "num_pages": int(pp)}})
+        if result.modified_count == 0:
+            print ("DB Error: Update Failed!")
+            return
 
     def do_schedule(self, line):
         if self.mode != "editor":
