@@ -18,7 +18,6 @@ SERVER = "mongodb://Team22:8NouhbjLuahLOcZK@cluster0-shard-00-00-ppp7l.mongodb.n
 #USER = "Team22"                                    # user to connect as
 DB = "Team22DB"                                   # db to user
 
-
 class CmdInterface(cmd.Cmd):
     """Applications Commandline interface"""
 
@@ -26,6 +25,9 @@ class CmdInterface(cmd.Cmd):
         self.db = db
         self.mode = "none"
         self.curr_id = -1
+
+    def get_next_sequence(self, name):  
+      return self.db.counters.find_and_modify(query= { '_id': name },update= { '$inc': {'seq': 1}}, new=True ).get('seq');
 
     def do_submit(self, line):
         # verify mode
@@ -38,16 +40,20 @@ class CmdInterface(cmd.Cmd):
         title, affiliation, ri_code = args[:3]
         authors = [self.curr_id]
         authors.extend(args[3:-1])
+
+        authors = map(int, authors)
+
         filename = args[-1]
 
         # Assign an editor to the submitted manuscript
-        EDITOR_QUERY = "SELECT id FROM Person WHERE type = 1;"
+        editors = list(self.db.person.find({"type": 1}))
+
         chosen_editor = -1
-        if self.do_execute(EDITOR_QUERY):
+        if len(editors) > 0:
             editor_ids = list()
 
-            for row in self.cursor:
-                editor_ids.append(row['id'])
+            for row in editors:
+                editor_ids.append(row['_id'])
 
             chosen_editor = random.choice(editor_ids)
         else:
@@ -56,41 +62,64 @@ class CmdInterface(cmd.Cmd):
 
         assert chosen_editor >= 0
 
-        # create squery to insert manuscript into manuscript table
-        INSERT_QUERY = ("INSERT INTO `Manuscript` (`title`,`description`,`ri_code`,`status`,`issue_vol`,`issue_year`,"
-                        "`num_pages`, `start_page`, `review_date`, `filename`, `assigned_editor`) VALUES "
-                        "(\'{}\', '', {}, \'{}\', NULL, NULL, NULL, NULL, NULL, \'{}\', {});").format(title, ri_code, 'Submitted', filename, chosen_editor)
-
-        new_manuscript_id = -1
-        if not self.do_execute(INSERT_QUERY):
-            print("Unable to execute SQL query. Reverting state")
-            self.con.rollback()
-            return
-        else:
-            new_manuscript_id = self.cursor.lastrowid
-
-        # create query to update current logged in users affiliation
-        queries = list()
-        UPDATE_QUERY = (("UPDATE `Person` "
-                         "SET affiliation = '{}' WHERE id = {};").format(affiliation, self.curr_id))
-
-        self.do_execute(UPDATE_QUERY)
-
-        # ensure authors exist in persons table, insert all listed authors into manuscript_author table with their rank
-        rank = 1
+        #ensure authors exist in table
         for author in authors:
-            queries.append("SELECT * FROM Person WHERE id = {} AND type = {};".format(author, AUTHOR))
-            queries.append(("INSERT INTO `Manuscript_Author` (`manuscript_id`, `author_id`, `rank`) "
-                            "VALUES ('{}', '{}', '{}');").format(new_manuscript_id, author, rank))
-            rank = rank + 1
+            result = list(self.db.person.find({"_id": author, "type": AUTHOR}));
 
-        for query in queries:
-            if not self.do_execute(query):
-                print("Unable to execute SQL query. Reverting state")
-                self.con.rollback()
+            if (len(result) == 0):
+                print ("There is no author with id {}".format(author))
                 return
 
-        self.con.commit()
+        # create squery to insert manuscript into manuscript table
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        new_manuscript = self.db.manuscript.insert_one({
+                "_id": self.get_next_sequence("manuscript"),
+                "title": title,
+                "description": "",
+                "ri_code": int(ri_code),
+                "status": "Submitted",
+                "filename": filename,
+                "chosen_editor": chosen_editor,
+                "date_created": now,
+                "date_changed": now,
+                "start_page": None,
+                "review_date": None,
+                "num_pages": None,
+                "issue_year": None,
+                "issue_vol": None
+            })
+
+        if not new_manuscript.acknowledged:
+            print("Unable to Insert")
+            return
+        else:
+            new_manuscript_id = new_manuscript.inserted_id
+
+        # create query to update current logged in users affiliation
+        objects = list()
+
+        update_result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"affiliation": affiliation}})
+
+        # insert all listed authors into manuscript_author table with their rank
+        rank = 1
+
+        for author in authors:
+            objects.append({
+                    "manuscript_id": new_manuscript_id,
+                    "author_id": author,
+                    "rank": rank
+                })
+
+            rank = rank + 1
+
+        result = self.db.manuscript_author.insert_many(objects)
+
+        if not result.acknowledged:
+            for author in authors:
+                self.db.manuscript_author.delete_one({"manuscript_id": new_manuscript_id, "author_id": author})
+
+            self.db.manuscript.delete_one({"_id": new_manuscript_id})
 
     def do_assign(self, line):
         # verify mode
