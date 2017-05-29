@@ -5,18 +5,15 @@ import sys                              # for passing shell arguments, misc erro
 import cmd                              # for creating interactive commandline interface
 import shlex                            # for parsing shell type arguments
 import datetime
-import time
 import random
-import pprint
 
 # Person Type
 EDITOR, AUTHOR, REVIEWER, RETIRED_REVIEWER = 1, 2, 3, 4
 
 # Configure SQL Driver
-#PASS = "" if len(sys.argv) < 1 else sys.argv[1]    # user's password
-SERVER = "mongodb://Team22:8NouhbjLuahLOcZK@cluster0-shard-00-00-ppp7l.mongodb.net:27017,cluster0-shard-00-01-ppp7l.mongodb.net:27017,cluster0-shard-00-02-ppp7l.mongodb.net:27017"                # db server to connect to
-#USER = "Team22"                                    # user to connect as
-DB = "Team22DB"                                   # db to user
+SERVER = "mongodb://Team22:8NouhbjLuahLOcZK@cluster0-shard-00-00-ppp7l.mongodb.net:27017,cluster0-shard-00-01-ppp7l.mongodb.net:27017,cluster0-shard-00-02-ppp7l.mongodb.net:27017"
+DB = "Team22DB"
+
 
 class CmdInterface(cmd.Cmd):
     """Applications Commandline interface"""
@@ -26,8 +23,9 @@ class CmdInterface(cmd.Cmd):
         self.mode = "none"
         self.curr_id = -1
 
-    def get_next_sequence(self, name):  
-      return self.db.counters.find_and_modify(query= { '_id': name },update= { '$inc': {'seq': 1}}, new=True ).get('seq');
+    def get_next_sequence(self, name):
+        return self.db.counters.find_and_modify(query={'_id': name},
+                                                update={'$inc': {'seq': 1}}, new=True).get('seq')
 
     def do_submit(self, line):
         # verify mode
@@ -62,9 +60,9 @@ class CmdInterface(cmd.Cmd):
 
         assert chosen_editor >= 0
 
-        #ensure authors exist in table
+        # ensure authors exist in table
         for author in authors:
-            result = list(self.db.person.find({"_id": author, "type": AUTHOR}));
+            result = list(self.db.person.find({"_id": author, "type": AUTHOR}))
 
             if (len(result) == 0):
                 print ("There is no author with id {}".format(author))
@@ -99,7 +97,7 @@ class CmdInterface(cmd.Cmd):
         # create query to update current logged in users affiliation
         objects = list()
 
-        update_result = self.db.person.update_one({"_id": self.curr_id}, {"$set": {"affiliation": affiliation}})
+        self.db.person.update_one({"_id": self.curr_id}, {"$set": {"affiliation": affiliation}})
 
         # insert all listed authors into manuscript_author table with their rank
         rank = 1
@@ -202,10 +200,10 @@ class CmdInterface(cmd.Cmd):
 
             self.do_display(list(self.db.manuscript.aggregate(
                [
-                 { "$match": {"assigned_editor": self.curr_id}},   
-                 { "$group" : { "_id" : "$status", "count": { "$sum": 1 } } }
+                   {"$match": {"assigned_editor": self.curr_id}},
+                   {"$group": {"_id": "$status", "count": {"$sum": 1}}}
                ]
-            )), ['_id', 'count']);
+            )), ['_id', 'count'])
 
             print("")
 
@@ -336,10 +334,10 @@ class CmdInterface(cmd.Cmd):
         if self.mode == "author":
             result = list(self.db.manuscript_author.aggregate(
                 [
-                    { "$match": {"rank": 1, "author_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo" } }, 
-                    { "$project": {"paperInfo.title": 1, "paperInfo._id": 1, "paperInfo.status": 1, "_id": 0} } 
+                    {"$match": {"rank": 1, "author_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo"}},
+                    {"$project": {"paperInfo.title": 1, "paperInfo._id": 1, "paperInfo.status": 1, "_id": 0}}
                 ]
-            ));
+            ))
 
             if (len(result) == 0):
                 print ("Nothing to show at this moment.")
@@ -351,7 +349,6 @@ class CmdInterface(cmd.Cmd):
             print("".join(["{:<12} ".format(col) for col in to_print]))
             print("--------------------------------------------")
 
-
             for res in result:
                 for paperInfo in res['paperInfo']:
                     print("".join(["{:<12} ".format(paperInfo[col]) for col in to_print]))
@@ -362,10 +359,10 @@ class CmdInterface(cmd.Cmd):
             if len(shlex.split(line)) == 0:
                 self.do_display(list(self.db.manuscript.aggregate(
                     [
-                        { "$match": {"assigned_editor": self.curr_id}},    
-                        { "$project": {"title": 1, "status": 1, "_id": 1} } 
+                        {"$match": {"assigned_editor": self.curr_id}},
+                        {"$project": {"title": 1, "status": 1, "_id": 1}}
                     ]
-                )), ['_id', 'title', 'status']);
+                )), ['_id', 'title', 'status'])
             else:
                 if shlex.split(line)[0] == 'issue':
                     self.do_display(list(self.db.issue.find()), ['year', 'period', 'title', 'status'])
@@ -381,20 +378,18 @@ class CmdInterface(cmd.Cmd):
         elif self.mode == "reviewer":
             result = list(self.db.manuscript_reviewer.aggregate(
                 [
-                    { "$match": {"result": "-", "reviewer_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo" } }, 
-                    { "$project": {
-                        "paperInfo.title": 1, 
-                        "paperInfo._id": 1, 
+                    {"$match": {"result": "-", "reviewer_id": self.curr_id}}, {"$lookup":  { "from": "manuscript", "localField": "manuscript_id", "foreignField": "_id", "as": "paperInfo" } }, 
+                    {"$project": {
+                        "paperInfo.title": 1,
+                        "paperInfo._id": 1,
                         "paperInfo.status": {"$filter": {
-                            "input": "$paperInfo.status", 
+                            "input": "$paperInfo.status",
                             "as": "status",
                             "cond": {"$eq": ["$$status", "Under Review"]}
-                        }}, 
-                        "_id": 0} } 
+                        }},
+                        "_id": 0}}
                 ]
-            ));
-
-            #print(result)
+            ))
 
             cols_to_print = ['_id', 'title', 'status']
 
@@ -437,8 +432,9 @@ class CmdInterface(cmd.Cmd):
                 return
 
             result = self.db.manuscript_reviewer.update_one(
-                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"}, 
-                {"$set": {"result": "y", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
+                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"},
+                {"$set": {"result": "y", "clarity": clarity, "method": method,
+                          "contribution": contribution, "appropriate": appropriate}}
             )
 
             if result.modified_count < 1:
@@ -461,11 +457,10 @@ class CmdInterface(cmd.Cmd):
                 return
 
             # update manuscript status
-
             result = self.db.manuscript.update_one(
-                    {"_id": manuscript_id}, 
-                    {"$set": {"status": "Accepted"}}
-                )
+                {"_id": manuscript_id},
+                {"$set": {"status": "Accepted"}}
+            )
 
             if (result.modified_count < 1):
                 print("Unable to Update, DB Error!")
@@ -486,7 +481,7 @@ class CmdInterface(cmd.Cmd):
                 return
 
             result = self.db.manuscript_reviewer.update_one(
-                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"}, 
+                {"reviewer_id": self.curr_id, "manuscript_id": manuscript_id, "result": "-"},
                 {"$set": {"result": "n", "clarity": clarity, "method": method, "contribution": contribution, "appropriate": appropriate}}
             )
 
@@ -510,11 +505,10 @@ class CmdInterface(cmd.Cmd):
                 return
 
             # update manuscript status
-
             result = self.db.manuscript.update_one(
-                    {"_id": manuscript_id}, 
-                    {"$set": {"status": "Rejected"}}
-                )
+                {"_id": manuscript_id},
+                {"$set": {"status": "Rejected"}}
+            )
 
             if (result.modified_count < 1):
                 print("Unable to Update, DB Error!")
@@ -682,7 +676,7 @@ class CmdInterface(cmd.Cmd):
 
 if __name__ == "__main__":
     # setup connection to db
-    con = MongoClient(SERVER, connect = False, ssl = True)
+    con = MongoClient(SERVER, connect=False, ssl=True)
     con.server_info()
     print("Connection to MegaMongododo Publications DB established.")
 
