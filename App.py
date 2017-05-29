@@ -228,16 +228,31 @@ class CmdInterface(cmd.Cmd):
         # map person type string to number
         pno = {'author': AUTHOR, 'editor': EDITOR, 'reviewer': REVIEWER}[tokens[0]]
 
-        def insert_sqls(fname, lname, pno, email, address, ri_codes=[]):
-            queries = ["INSERT INTO `Person` "
-                       "(`first_name`, `last_name`, `type`, `email`, `affiliation`, `mailing_address`) VALUES "
-                       "(\'{0}\', \'{1}\', {2}, \'{3}\', NULL, \'{4}\');".format(fname, lname, pno, email, address)]
+        def insert_person(fname, lname, pno, email, address, ri_codes=[]):
+            for ri_code in ri_codes:
+                result = list(self.db.ri_code.find({'_id': ri_code}))
 
-            self.do_execute(queries.pop(0))
+                if (len(result) == 0):
+                    print ("Invalid RI Code ({}) passed".format(ri_code))
+                    return
+
+            person_obj = {
+                "_id": get_next_sequence('person'),
+                "first_name": fname,
+                "last_name": lname,
+                "type": pno,
+                "email": email,
+                "affiliation": None,
+                "mailing_address": address
+            }
+
+            new_id = self.db.person.insert_one(person_obj);
+
+            if new_id.acknowledged:
+                new_id = new_id.inserted_id
 
             for ri_code in ri_codes:
-                queries.append("INSERT INTO `Reviewer_Interest`(`person_id`, `ri_code`) VALUES "
-                               "({0}, {1});".format(self.cursor.lastrowid, ri_code))
+                self.db.reviewer_interest.insert_one({"reviewer_id": new_id, "ri_code": ri_code})
 
             return queries
 
@@ -260,7 +275,9 @@ class CmdInterface(cmd.Cmd):
                 return
             email, address = "", ""
 
-        queries = insert_sqls(fname, lname, pno, email, address, ri_codes)
+        ri_codes = map(int, ri_codes)
+
+        queries = insert_person(fname, lname, pno, email, address, ri_codes)
 
         # execute queries
         for query in queries:
@@ -563,6 +580,7 @@ class CmdInterface(cmd.Cmd):
         # find current total page count of issue (without manuscript being scheduled)
         all_issue_manuscripts = self.db.manuscript.find({"status": "Scheduled", "issue_vol": issue_vol,
                                                          "issue_year": issue_year})
+
         sum_pages = sum([manuscript['num_pages'] for manuscript in all_issue_manuscripts
                          if 'num_pages' in manuscript])
 
