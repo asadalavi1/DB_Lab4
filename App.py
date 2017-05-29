@@ -18,7 +18,8 @@ DB = "Team22DB"
 class CmdInterface(cmd.Cmd):
     """Applications Commandline interface"""
 
-    def init(self, db):
+    def init(self, con, db):
+        self.con = con
         self.db = db
         self.mode = "none"
         self.curr_id = -1
@@ -378,7 +379,7 @@ class CmdInterface(cmd.Cmd):
                 )), ['_id', 'title', 'status'])
             else:
                 if shlex.split(line)[0] == 'issue':
-                    self.do_display(list(self.db.issue.find()), ['year', 'period', 'title', 'status'])
+                    self.do_display(list(self.db.issue.find()), ['year', 'volume', 'period', 'title', 'status'])
 
             # print("\nStatus of Manuscripts in System:")
             # print("".join(["{:<12}".format(col) for col in self.cursor.column_names]))
@@ -561,13 +562,13 @@ class CmdInterface(cmd.Cmd):
         if self.mode != "editor":
             print ("Command not usable in this mode")
 
-        manuscript_id, issue_vol, issue_year = shlex.split(line)
+        manuscript_id, issue_vol, issue_year = map(int, shlex.split(line))
 
         # verify manuscript belongs to logged in editor and has correct status
-        permissions_check = self.db.manuscript.find({"_id": manuscript_id,
+        permissions_check = self.db.manuscript.find_one({"_id": manuscript_id,
                                                      "assigned_editor": self.curr_id,
                                                      "status": "Typesetting"})
-        if not permissions_check:
+        if permissions_check is None:
             print("Invalid Input: Only manuscripts with Typesetting status belonging to current editor can be scheduled")
 
         num_pages = permissions_check['num_pages']
@@ -587,8 +588,14 @@ class CmdInterface(cmd.Cmd):
 
         # update manuscript with its associated issue information
         result = self.db.manuscript.update_one({"_id": manuscript_id},
-                                               {"issue_vol": issue_vol, "issue_year": issue_year,
-                                                "start_page": sum_pages + 1})
+                                               { "$set":
+                                                    {
+                                                        "issue_vol": issue_vol, 
+                                                        "issue_year": issue_year,
+                                                        "start_page": sum_pages + 1,
+                                                        "status": "Scheduled"
+                                                    }
+                                                })
         if result.modified_count == 0:
             print ("DB Error: Update Failed!")
             return
@@ -683,6 +690,7 @@ class CmdInterface(cmd.Cmd):
         return True
 
     def do_exit(self, line):
+        self.con.close()
         sys.exit(0)
 
     def do_quit(self, line):
@@ -698,7 +706,7 @@ if __name__ == "__main__":
     # enter commandline i/o loop
     prompt = CmdInterface()
     prompt.prompt = '> '
-    prompt.init(con[DB])
+    prompt.init(con, con[DB])
     prompt.cmdloop('Starting MegaMongododo Publication Prompt')
 
     print("\nConnection terminated.", end='')
