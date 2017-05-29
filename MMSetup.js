@@ -280,197 +280,197 @@ db.manuscript_author.insertMany([
     {
       "manuscript_id": 1,
       "author_id": 2,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 1,
       "author_id": 4,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 1,
       "author_id": 23,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 2,
       "author_id": 11,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 2,
       "author_id": 23,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 3,
       "author_id": 2,
-      "rank": 4,
+      "rank": 4
     },
     {
       "manuscript_id": 3,
       "author_id": 5,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 3,
       "author_id": 6,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 3,
       "author_id": 10,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 4,
       "author_id": 17,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 4,
       "author_id": 18,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 5,
       "author_id": 22,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 6,
       "author_id": 27,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 6,
       "author_id": 28,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 6,
       "author_id": 29,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 7,
       "author_id": 6,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 8,
       "author_id": 2,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 8,
       "author_id": 4,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 8,
       "author_id": 6,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 9,
       "author_id": 16,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 9,
       "author_id": 17,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 10,
       "author_id": 10,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 11,
       "author_id": 18,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 11,
       "author_id": 29,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 12,
       "author_id": 23,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 12,
       "author_id": 27,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 13,
       "author_id": 2,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 13,
       "author_id": 4,
-      "rank": 4,
+      "rank": 4
     },
     {
       "manuscript_id": 13,
       "author_id": 10,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 13,
       "author_id": 11,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 13,
       "author_id": 29,
-      "rank": 5,
+      "rank": 5
     },
     {
       "manuscript_id": 14,
       "author_id": 17,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 14,
       "author_id": 18,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 14,
       "author_id": 24,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 15,
       "author_id": 5,
-      "rank": 2,
+      "rank": 2
     },
     {
       "manuscript_id": 15,
       "author_id": 26,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 16,
       "author_id": 5,
-      "rank": 1,
+      "rank": 1
     },
     {
       "manuscript_id": 16,
       "author_id": 23,
-      "rank": 3,
+      "rank": 3
     },
     {
       "manuscript_id": 16,
       "author_id": 25,
-      "rank": 2,
+      "rank": 2
     }
 ]);
 
@@ -478,153 +478,123 @@ db.manuscript_author.insertMany([
 db.reviewer_interest.insertMany([
     {
       "reviewer_id": 3,
-      "ri_code": 31,
-      "ri_code": null
+      "ri_code": 31
     },
     {
       "reviewer_id": 3,
-      "ri_code": 92,
-      "ri_code": null
+      "ri_code": 92
     },
     {
       "reviewer_id": 3,
-      "ri_code": 120,
-      "ri_code": null
+      "ri_code": 120
     },
     {
       "reviewer_id": 7,
-      "ri_code": 65,
-      "ri_code": null
+      "ri_code": 65
     },
     {
       "reviewer_id": 7,
-      "ri_code": 94,
-      "ri_code": null
+      "ri_code": 94
     },
     {
       "reviewer_id": 8,
-      "ri_code": 22,
-      "ri_code": null
+      "ri_code": 22
     },
     {
       "reviewer_id": 8,
-      "ri_code": 74,
-      "ri_code": null
+      "ri_code": 74
     },
     {
       "reviewer_id": 8,
-      "ri_code": 82,
-      "ri_code": null
+      "ri_code": 82
     },
     {
       "reviewer_id": 9,
-      "ri_code": 64,
-      "ri_code": null
+      "ri_code": 64
     },
     {
       "reviewer_id": 9,
-      "ri_code": 85,
-      "ri_code": null
+      "ri_code": 85
     },
     {
       "reviewer_id": 9,
-      "ri_code": 121,
-      "ri_code": null
+      "ri_code": 121
     },
     {
       "reviewer_id": 13,
-      "ri_code": 31,
-      "ri_code": null
+      "ri_code": 31
     },
     {
       "reviewer_id": 13,
-      "ri_code": 92,
-      "ri_code": null
+      "ri_code": 92
     },
     {
       "reviewer_id": 14,
-      "ri_code": 1,
-      "ri_code": null
+      "ri_code": 1
     },
     {
       "reviewer_id": 14,
-      "ri_code": 65,
-      "ri_code": null
+      "ri_code": 65
     },
     {
       "reviewer_id": 14,
-      "ri_code": 94,
-      "ri_code": null
+      "ri_code": 94
     },
     {
       "reviewer_id": 15,
-      "ri_code": 70,
-      "ri_code": null
+      "ri_code": 70
     },
     {
       "reviewer_id": 15,
-      "ri_code": 74,
-      "ri_code": null
+      "ri_code": 74
     },
     {
       "reviewer_id": 15,
-      "ri_code": 82,
-      "ri_code": null
+      "ri_code": 82
     },
     {
       "reviewer_id": 19,
-      "ri_code": 64,
-      "ri_code": null
+      "ri_code": 64
     },
     {
       "reviewer_id": 19,
-      "ri_code": 85,
-      "ri_code": null
+      "ri_code": 85
     },
     {
       "reviewer_id": 19,
-      "ri_code": 102,
-      "ri_code": null
+      "ri_code": 102
     },
     {
       "reviewer_id": 20,
-      "ri_code": 31,
-      "ri_code": null
+      "ri_code": 31
     },
     {
       "reviewer_id": 20,
-      "ri_code": 92,
-      "ri_code": null
+      "ri_code": 92
     },
     {
       "reviewer_id": 20,
-      "ri_code": 94,
-      "ri_code": null
+      "ri_code": 94
     },
     {
       "reviewer_id": 21,
-      "ri_code": 65,
-      "ri_code": null
+      "ri_code": 65
     },
     {
       "reviewer_id": 21,
-      "ri_code": 82,
-      "ri_code": null
+      "ri_code": 82
     },
     {
       "reviewer_id": 30,
-      "ri_code": 64,
-      "ri_code": null
+      "ri_code": 64
     },
     {
       "reviewer_id": 30,
-      "ri_code": 74,
-      "ri_code": null
+      "ri_code": 74
     },
     {
       "reviewer_id": 30,
-      "ri_code": 85,
-      "ri_code": null
+      "ri_code": 85
     }
 ]);
 

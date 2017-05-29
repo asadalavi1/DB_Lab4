@@ -99,71 +99,65 @@ class CmdInterface(cmd.Cmd):
             return
 
         # extract arguments
-        man_id, rev_id = shlex.split(line)
+        man_id, rev_id = map(int, shlex.split(line))
 
         # verify manuscript belongs to logged in editor
-        permissions_check = ("SELECT * FROM Manuscript "
-                             "WHERE id = {} AND assigned_editor = {};").format(man_id, self.curr_id)
-        if not self.do_execute(permissions_check):
+        permissions_check = self.db.manuscript.find({"_id": man_id, "assigned_editor": self.curr_id})
+        if not permissions_check:
             print("Invalid Input: Only manuscripts belonging to current editor can be assigned")
             return
 
         # verify assigning to reviewer
-        rev_validation_query = "SELECT * FROM Person WHERE id = {} AND type = {};".format(rev_id, REVIEWER)
-        if not self.do_execute(rev_validation_query):
+        rev_validation_query = self.db.person.find({"_id": rev_id, "type": REVIEWER})
+        if not rev_validation_query:
             print("Invalid Input: Manuscript can only be assigned to reviewers")
             return
 
         # find interests of reviewer being assigned
-        ri_code_validation_query = "SELECT ri_code FROM Reviewer_Interest WHERE reviewer_id = {};".format(rev_id)
-        if not self.do_execute(ri_code_validation_query):
+        # ri_code_validation_query = "SELECT ri_code FROM Reviewer_Interest WHERE reviewer_id = {};".format(rev_id)
+        ri_code_validation_query = list(self.db.reviewer_interest.find({"reviewer_id": rev_id}))
+        if not ri_code_validation_query:
+            print("Invalid Input: no reviewer interests found")
             return
 
-        interest_ri_codes = list()
-        for row in self.cursor:
+        interest_ri_codes = map(lambda item: item['ri_code'], ri_code_validation_query)
+        for row in ri_code_validation_query:
             interest_ri_codes.append(row['ri_code'])
 
         # find ri_code of Manuscript
-        man_ri_code_query = ("SELECT ri_code FROM Manuscript "
-                             "WHERE id = {} AND assigned_editor = {};").format(man_id, self.curr_id)
-        if not self.do_execute(man_ri_code_query):
+        man_ri_code_query = self.db.manuscript.find({"_id": man_id, "assigned_editor": int(self.curr_id)})
+        if not man_ri_code_query:
+            print("No manuscript ri_code found")
             return
 
         man_ri_code = -1
-        for row in self.cursor:
+        for row in list(man_ri_code_query):
             man_ri_code = row['ri_code']
 
         assert man_ri_code > -1
 
         # ensure reviewer and manuscript interests align
         if man_ri_code not in interest_ri_codes:
-            print("Invalid Assignment: This paper does not match Reviewer {}'s Interests!".format(rev_id))
+            print("Invalid Assignment: This paper does not match Reviewer {}'s Interests!".format(int(rev_id)))
             return
 
         # insert manuscript_reviewer and update manuscript status
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        queries = [("INSERT INTO `Manuscript_Reviewer` "
-                    "(`reviewer_id`, `manuscript_id`, `result`, `clarity`, `method`, `contribution`, `appropriate`) "
-                    "VALUES ({},{},'-',NULL,NULL,NULL,NULL);").format(rev_id, man_id)]
-        queries += [("UPDATE Manuscript SET status = \'{}\', review_date = \'{}\'"
-                     "WHERE id = {};").format("Under Review", now, man_id)]
+        self.db.manuscript_reviewer.insert({"reviewer_id": rev_id, "manuscript_id": man_id,
+                                            "result": None, "clarity": None, "method": None,
+                                            "contribution": None, "appropriate": None})
 
-        # execute queries
-        for query in queries:
-            if not self.do_execute(query):
-                print("Unable to execute SQL query. Reverting state")
-                self.con.rollback()
-                return
-
-        self.con.commit()
+        update = self.db.manuscript.update_one({"_id": man_id},
+                                               {"$set": {"status": "Under Review", "review_date": now}})
+        if not update:
+            print("Unable to update manuscript state")
 
     def do_login(self, line):
         if self.mode != "none":
-            print("Command not usable. Already logged in as {}".format(self.curr_id))
+            print("Command not usable. Already logged in as {}".format(int(self.curr_id)))
             return
 
         # parse arguments
-        #import pdb; pdb.set_trace()
         user_id = shlex.split(line)[0]
         user = self.db.person.find_one({"_id": int(user_id)})
 
