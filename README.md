@@ -87,13 +87,18 @@ Commands
      show manuscripts in issue#
 
   2. `accept <manuscript_id>`
+
   3. `reject <manuscript_id>`
   4. `resign`
+
+	 reviewer status changed to retired reviewer
+	 if reviewer last active reviewer on any manuscript change the manuscript status back to *Submitted* from *Under Review*
+
   5. `logout`
      log out of current user's account
 
 - Mode: Any
-  1. register
+  1. `register`
 
      register person with their various attributes into the person's table. only a registered person can log into publication system
 
