@@ -652,22 +652,25 @@ class CmdInterface(cmd.Cmd):
                 return
 
         # find all manuscript-reviewer entries associated with current resigning reviewer
-        manuscript_reviewer_entries = self.db.manuscript_reviewer.find({"reviewer_id": self.curr_id})
+        manuscript_reviewer_entries = list(self.db.manuscript_reviewer.find({"reviewer_id": self.curr_id}))
+        # print(manuscript_reviewer_entries)
         for manuscript_reviewer_entry in manuscript_reviewer_entries:
             # find all manuscripts associated with current resigning reviewer that are under review
-            manuscripts_of_reviewer = self.db.manuscript.find({"_id": manuscript_reviewer_entry['manuscript_id'],
-                                                               "type": "Under_Review"})
+            manuscripts_of_reviewer = list(self.db.manuscript.find({"_id": manuscript_reviewer_entry['manuscript_id'],
+                                                                    "status": "Under Review"}))
+            # print(manuscripts_of_reviewer)
             # find all reviewers associated with these manuscripts
             for manuscript in manuscripts_of_reviewer:
-                reviewers_of_manuscript = self.db.manuscript_reviewer.find({"manuscript_id": manuscript})
+                reviewers_of_manuscript = list(self.db.manuscript_reviewer.find({"manuscript_id": manuscript["_id"]}))
+                # print(reviewers_of_manuscript)
                 # if no reviewers of these manuscripts are left active
-                if not any([self.db.person.find({"_id": reviewer['reviewer_id'], "type": REVIEWER})
+                if not any([len(list(self.db.person.find({"_id": reviewer['reviewer_id'], "type": REVIEWER}))) != 0
                             for reviewer in reviewers_of_manuscript]):
                     # revert there status to submitted
                     self.db.manuscript.update_one({"_id": manuscript['_id']},
-                                                  {"$set": {"type": "Submitted"}})
-                    print("No active reviewers of manuscript {} left. \
-                    Manuscript status reverted to Submitted".format(manuscript['id']))
+                                                  {"$set": {"status": "Submitted"}})
+                    print("No active reviewers of manuscript {} left.\n \
+                    Manuscript status reverted to Submitted".format(manuscript['_id']))
 
     def do_EOF(self, line):
         return True
