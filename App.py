@@ -79,7 +79,7 @@ class CmdInterface(cmd.Cmd):
                 "ri_code": int(ri_code),
                 "status": "Submitted",
                 "filename": filename,
-                "chosen_editor": chosen_editor,
+                "assigned_editor": chosen_editor,
                 "date_created": now,
                 "date_changed": now,
                 "start_page": None,
@@ -172,7 +172,7 @@ class CmdInterface(cmd.Cmd):
         # insert manuscript_reviewer and update manuscript status
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.db.manuscript_reviewer.insert({"reviewer_id": rev_id, "manuscript_id": man_id,
-                                            "result": None, "clarity": None, "method": None,
+                                            "result": "-", "clarity": None, "method": None,
                                             "contribution": None, "appropriate": None})
 
         update = self.db.manuscript.update_one({"_id": man_id},
