@@ -130,8 +130,8 @@ class CmdInterface(cmd.Cmd):
         man_id, rev_id = map(int, shlex.split(line))
 
         # verify manuscript belongs to logged in editor
-        permissions_check = self.db.manuscript.find({"_id": man_id, "assigned_editor": self.curr_id})
-        if not permissions_check:
+        permissions_check = list(self.db.manuscript.find({"_id": man_id, "assigned_editor": self.curr_id}))
+        if len(permissions_check) == 0:
             print("Invalid Input: Only manuscripts belonging to current editor can be assigned")
             return
 
@@ -565,13 +565,14 @@ class CmdInterface(cmd.Cmd):
         manuscript_id, issue_vol, issue_year = map(int, shlex.split(line))
 
         # verify manuscript belongs to logged in editor and has correct status
-        permissions_check = self.db.manuscript.find_one({"_id": manuscript_id,
+        permissions_check = list(self.db.manuscript.find({"_id": manuscript_id,
                                                      "assigned_editor": self.curr_id,
-                                                     "status": "Typesetting"})
-        if permissions_check is None:
+                                                     "status": "Typesetting"}))
+        if len(permissions_check) == 0:
             print("Invalid Input: Only manuscripts with Typesetting status belonging to current editor can be scheduled")
+            return
 
-        num_pages = permissions_check['num_pages']
+        num_pages = permissions_check[0]['num_pages']
         assert num_pages > 0
 
         # find current total page count of issue (without manuscript being scheduled)
@@ -620,13 +621,15 @@ class CmdInterface(cmd.Cmd):
 
         issue_vol, issue_year, issue_period, issue_title = shlex.split(line)
         issue_period = int(issue_period)
+        issue_vol = int(issue_vol)
+        issue_year = int(issue_year)
 
         if issue_period > 4 or issue_period < 0:
             print("Invalid Input: Issue period must be between 0 and 4")
             return
 
         self.db.issue.insert_one({"year": issue_year, "period": issue_period,
-                                  "volume": issue_vol, "title": issue_title})
+                                  "volume": issue_vol, "title": issue_title, "status": "Scheduled"})
 
     def do_retract(self, line):
         if self.mode != "author":
