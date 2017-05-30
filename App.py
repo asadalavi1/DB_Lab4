@@ -284,25 +284,6 @@ class CmdInterface(cmd.Cmd):
         if new_id != None:
             print ("New User Registered with ID: {}".format(new_id))
 
-    def do_execute(self, query, multi=False):
-        """helper function to execute SQL statement"""
-        try:
-            # execute input query
-            queries = query if multi else [query]
-            for q in queries:
-                print("Executing Query: '{0}'".format(q))
-                self.cursor.execute(q)
-        except mysql.connector.Error as e:        # catch SQL errors
-            print("SQL Error: {0}".format(e.msg))
-            return False
-
-        if self.cursor.rowcount > 0:
-            print("Operation Successful!")
-            return True
-        else:
-            print("No Rows Affected by Operation, such a record does not exist or is inaccessible")
-            return False
-
     def do_display(self, result_set, keys_to_display):
         """helper function to execute SQL statement and render results"""
         # print table header
@@ -543,9 +524,9 @@ class CmdInterface(cmd.Cmd):
             print("Invalid Input: Manuscript pages have to be less than {} pages".format(pp_limit))
 
         # verify manuscript belongs to logged in editor
-        permissions_check = self.db.manuscript.find({"_id": manuscript_id,
-                                                     "assigned_editor": self.curr_id})
-        if not permissions_check:
+        permissions_check = list(self.db.manuscript.find({"_id": manuscript_id,
+                                                          "assigned_editor": self.curr_id}))
+        if len(permissions_check) == 0:
             print("Invalid Input: Only manuscripts belonging to current editor can be typeset")
             return
 
@@ -566,8 +547,8 @@ class CmdInterface(cmd.Cmd):
 
         # verify manuscript belongs to logged in editor and has correct status
         permissions_check = list(self.db.manuscript.find({"_id": manuscript_id,
-                                                     "assigned_editor": self.curr_id,
-                                                     "status": "Typesetting"}))
+                                                          "assigned_editor": self.curr_id,
+                                                          "status": "Typesetting"}))
         if len(permissions_check) == 0:
             print("Invalid Input: Only manuscripts with Typesetting status belonging to current editor can be scheduled")
             return
@@ -589,14 +570,13 @@ class CmdInterface(cmd.Cmd):
 
         # update manuscript with its associated issue information
         result = self.db.manuscript.update_one({"_id": manuscript_id},
-                                               { "$set":
-                                                    {
-                                                        "issue_vol": issue_vol, 
-                                                        "issue_year": issue_year,
-                                                        "start_page": sum_pages + 1,
-                                                        "status": "Scheduled"
-                                                    }
-                                                })
+                                               {"$set":
+                                                {
+                                                     "issue_vol": issue_vol,
+                                                     "issue_year": issue_year,
+                                                     "start_page": sum_pages + 1,
+                                                     "status": "Scheduled"
+                                                }})
         if result.modified_count == 0:
             print ("DB Error: Update Failed!")
             return
